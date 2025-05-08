@@ -1,5 +1,5 @@
 # OX05B1S Raspberry Pi 5 4-Lane MIPI CSI-2 Driver
-**Version:** 0.1   **Status:** *Validated on Raspberry Pi 5 (RP1 silicon)*  
+**Version:** 0.1   **Status:** *Proof-of-concept, validated on Raspberry Pi 5 (RP1 silicon)*  
 
 This project brings full-resolution 2592 × 1944 streaming at **60 frames per second** from the **OX05B1S RGB-IR** image sensor over **4-lane MIPI CSI-2** to the Raspberry Pi 5.  
 The driver is implemented as a V4L2 sub-device (*I²C sensor driver*), packaged for easy out-of-tree compilation and distribution.
@@ -79,8 +79,82 @@ echo "dtoverlay=ox05b1s-rpi5-overlay" | sudo tee -a /boot/config.txt
 
 # 6. Reboot
 sudo reboot
-
 After the reboot you should see the sub-device node:
+
+bash
+Copy
+Edit
 $ v4l2-ctl --list-devices
 ox05b1s 10-006c (platform: fe801000.csi):
         /dev/video0
+## 4. Capturing Video
+The V4L2 node exposes RAW12 Bayer.
+Test streaming with DMA-buffer mmap:
+
+bash
+Copy
+Edit
+# 10-second test stream, no saving
+v4l2-ctl -d /dev/video0 --set-fmt-video=width=2592,height=1944,pixelformat=RG12 \
+         --stream-mmap --stream-count=600
+
+# Save 100 frames to a single raw file
+v4l2-ctl -d /dev/video0 -v width=2592,height=1944,pixelformat=RG12 \
+         --stream-to=ox05b1s.raw --stream-count=100
+## 4.1 Example userspace ISP with libcamera-apps
+bash
+Copy
+Edit
+libcamera-raw --camera 0 --width 2592 --height 1944 -o frame_%04d.raw
+Convert RAW12 to a viewable RGB using rawpy, dcraw, or your custom pipeline.
+
+## 5. Controls
+V4L2 Control	Range / Step	Driver register
+exposure	1 – 4095 lines (1 line ≈ 16.6 µs)	0x0202[19:0]
+analogue_gain	1× – 15.5×	0x0204 + 0x0205
+digital_gain	1× – 8×	0x020E + 0x020F
+horizontal_flip	0 / 1	0x0101 bit 1
+vertical_flip	0 / 1	0x0101 bit 0
+
+Set with v4l2-ctl --set-ctrl.
+
+## 6. Device-Tree Overlay Details
+overlay/ox05b1s-rpi5-overlay.dts enables:
+
+I²C address 0x6c on i2c_csi_dsi bus
+
+24 MHz clock from the RP1 camera clock generator
+
+4 data-lanes + separate clock lane
+
+Link frequency property (link-frequencies = <1050000000>) required by bcm2835-unicam.
+
+If you need to move the sensor to the other port, change the target = <&csi> and the GPIO numbers, then re-compile:
+
+bash
+Copy
+Edit
+dtc -I dts -O dtb -o ox05b1s-rpi5-overlay.dtbo overlay/ox05b1s-rpi5-overlay.dts
+## 7. Advanced Topics
+HDR (staggered) – the OX05B1S supports dual-exposure HDR. Register sequences are not yet merged; contributions welcome!
+
+RGB-IR demosaicing – the extra IR channel lives in the fourth pixel of each quad. Sample Python (NumPy) script in examples/ shows how to split visible/IR planes.
+
+Dynamic Lane Switching – RP1 allows per-mode 1-, 2- or 4-lane. Expose additional modes by duplicating the ox05b1s_mode struct array and adjusting HTS/VTS/PCLK.
+
+Clocking – Default PLL is 350 MHz → 1.05 Gbps/lane. For lower fps you can drop to 27 MHz xvclk and halve the link.
+
+## 8. Troubleshooting
+Symptom	Fix
+Wrong sensor ID in dmesg	I²C pull-ups missing or wrong address (check i2cdetect -y 10).
+bcm2835-unicam fe801000.csi: fifo overflow	Link frequency wrong; make sure /bits/ 64 <1050000000> matches pclk × bits / 4 lanes.
+All-black or checkerboard image	RAW12 unpacking mistake in userspace; verify byte ordering (little-endian LSByte first).
+Green/purple tint	Debayer assumes BGGR but sensor is RGGB by default. Override --awbgain or remap Bayer pattern.
+
+## 9. Contributing
+Fork ➜ create topic branch ➜ commit (use Signed-off-by) ➜ pull request.
+
+For driver changes, adhere to kernel coding-style (scripts/checkpatch.pl).
+
+Provide logic-analyzer capture or oscilloscope screenshot for timing claims.
+
