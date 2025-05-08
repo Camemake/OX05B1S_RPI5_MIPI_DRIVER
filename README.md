@@ -87,6 +87,7 @@ Edit
 $ v4l2-ctl --list-devices
 ox05b1s 10-006c (platform: fe801000.csi):
         /dev/video0
+---
 ## 4. Capturing Video
 The V4L2 node exposes RAW12 Bayer.
 Test streaming with DMA-buffer mmap:
@@ -101,13 +102,15 @@ v4l2-ctl -d /dev/video0 --set-fmt-video=width=2592,height=1944,pixelformat=RG12 
 # Save 100 frames to a single raw file
 v4l2-ctl -d /dev/video0 -v width=2592,height=1944,pixelformat=RG12 \
          --stream-to=ox05b1s.raw --stream-count=100
+
+---
 ## 4.1 Example userspace ISP with libcamera-apps
 bash
 Copy
 Edit
 libcamera-raw --camera 0 --width 2592 --height 1944 -o frame_%04d.raw
 Convert RAW12 to a viewable RGB using rawpy, dcraw, or your custom pipeline.
-
+---
 ## 5. Controls
 V4L2 Control	Range / Step	Driver register
 exposure	1 – 4095 lines (1 line ≈ 16.6 µs)	0x0202[19:0]
@@ -117,7 +120,7 @@ horizontal_flip	0 / 1	0x0101 bit 1
 vertical_flip	0 / 1	0x0101 bit 0
 
 Set with v4l2-ctl --set-ctrl.
-
+---
 ## 6. Device-Tree Overlay Details
 overlay/ox05b1s-rpi5-overlay.dts enables:
 
@@ -135,6 +138,8 @@ bash
 Copy
 Edit
 dtc -I dts -O dtb -o ox05b1s-rpi5-overlay.dtbo overlay/ox05b1s-rpi5-overlay.dts
+
+---
 ## 7. Advanced Topics
 HDR (staggered) – the OX05B1S supports dual-exposure HDR. Register sequences are not yet merged; contributions welcome!
 
@@ -144,6 +149,7 @@ Dynamic Lane Switching – RP1 allows per-mode 1-, 2- or 4-lane. Expose addition
 
 Clocking – Default PLL is 350 MHz → 1.05 Gbps/lane. For lower fps you can drop to 27 MHz xvclk and halve the link.
 
+---
 ## 8. Troubleshooting
 Symptom	Fix
 Wrong sensor ID in dmesg	I²C pull-ups missing or wrong address (check i2cdetect -y 10).
@@ -151,6 +157,7 @@ bcm2835-unicam fe801000.csi: fifo overflow	Link frequency wrong; make sure /bits
 All-black or checkerboard image	RAW12 unpacking mistake in userspace; verify byte ordering (little-endian LSByte first).
 Green/purple tint	Debayer assumes BGGR but sensor is RGGB by default. Override --awbgain or remap Bayer pattern.
 
+---
 ## 9. Contributing
 Fork ➜ create topic branch ➜ commit (use Signed-off-by) ➜ pull request.
 
