@@ -167,6 +167,6 @@ static struct i2c_driver ox05b1s_driver = {
 };
 module_i2c_driver(ox05b1s_driver);
 
-MODULE_AUTHOR("Your Name <you@example.com>");
+MODULE_AUTHOR("Camemake");
 MODULE_DESCRIPTION("OX05B1S sensor driver for Raspberry Pi 5");
 MODULE_LICENSE("GPL");
