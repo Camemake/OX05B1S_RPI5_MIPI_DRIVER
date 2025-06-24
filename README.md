@@ -56,7 +56,7 @@ sudo apt update
 sudo apt install raspberrypi-kernel-headers build-essential git
 
 # 2  Grab the driver sources
-git clone https://github.com/your-github/OX05B1S_RPI5_MIPI_DRIVER.git
+git clone https://github.com/Camemake/OX05B1S_RPI5_MIPI_DRIVER.git
 cd OX05B1S_RPI5_MIPI_DRIVER
 
 # 3  Build the out‑of‑tree kernel module
